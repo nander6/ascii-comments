@@ -2,6 +2,7 @@
 <head>
 <title>ASCII comments generator</title>
 <script type="text/javascript" src="jquery-1.10.2.min.js"></script>
+<script type="text/javascript" src="jquery.cookie.js"></script>
 <script>
 /*
     Каждые 7 строк обозначают новый ASCII символ.
@@ -675,19 +676,59 @@ var font = [
     '      '
 ];
 
+var types = {
+    block: {
+        begin: "/*",
+        line: " *",
+        end: " */"
+    },
+    inlineslashes: {
+        line: "//"
+    },
+    inlinesharp: {
+        line: "#"
+    },
+    html: {
+        begin: "<!--",
+        line: "  --",
+        end: "  -->"
+    }
+};
+
 $(function () {
+    var typeName = $.cookie('type') || 'block';
+    var type = types[typeName];
+
+    $('input[type=radio][value=' + typeName + ']').prop('checked', true);
+
+    $('input[type=radio]').click(function ()
+    {
+        $('input[type=radio][value=' + typeName + ']').prop('checked', false);
+        var $this = $(this);
+        $this.prop('checked', true);
+        typeName = $this.val();
+        $.cookie('type', typeName);
+        type = types[typeName];
+        $('textarea.source').trigger('change');
+    });
+
     $('textarea.source').on('change mousedown keydown keyup', function ()
     {
         var text = $(this).val();
 
+        var result = [];
+        if (type.begin)
+        {
+            result.push(type.begin);
+        }
+
         // Делаем из всего комментария массив строк и
         // убираем везде лишние пробельные символы.
         var lines = $.map(text.split('\n'), $.trim);
-        var result = ['/*'];
         $.each(lines, function (i, line)
         {
             // Каждая ascii строка - 7 обычных в высоту.
-            var asciiline = [' *', ' *', ' *', ' *', ' *', ' *', ' *'];
+            var asciiline = [type.line, type.line, type.line, type.line, type.line, type.line, type.line];
 
             $.each(line.split(''), function ()
             {
@@ -708,13 +749,18 @@ $(function () {
             });
 
             // Добавляем промежуток в одну строчку между ASCII строчками
-            if (i) result.push(' *');
+            if (i) result.push(type.line);
 
             result = result.concat(asciiline);
         });
 
+        if (type.end)
+        {
+            result.push(type.end);
+        }
+
         // Закрываем комментарий и собираем все в одну строку
-        result = result.concat([' */']).join('\n');
+        result = result.join('\n');
 
         $('textarea.result').val(result);
     });
@@ -758,10 +804,21 @@ $(function () {
         white-space: pre;
         text-align: left;
     }
+
+    label {
+        padding: 10px;
+        display: inline-block;
+    }
 </style>
 </head>
 <body>
-<textarea class="source"></textarea>
+<textarea class="source">Comment</textarea>
+<div class="type">
+    <label><input type="radio" name="type" value="block">/* */ </label>
+    <label><input type="radio" name="type" value="inlineslashes">// </label>
+    <label><input type="radio" name="type" value="inlinesharp"># </label>
+    <label><input type="radio" name="type" value="html">&lt;!-- --&gt; </label>
+</div>
 <textarea class="result"></textarea>
 </body>
 </html>
